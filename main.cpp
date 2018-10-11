@@ -1,49 +1,16 @@
-#include <opencv2/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/features2d/features2d.hpp>
+#include "imghandle.hpp"
 
-using namespace cv;
-
-#include <iostream>
 #include <string>
-using namespace std;
-
-#define NOISE_MAX_AREA 50000
-#define WIDTH 1256
-#define HEIGHT 404
-
-vector<Point> getEdgePoint(int w, int h, Vec4f& line) {
-	double k = line[1] / line[0];
-	Point p1, p2;
-	p1.x = line[2] - line[3] / k;
-	p1.y = 0;
-	p2.x = line[2] + (h - line[3]) / k;
-	p2.y = h;
-	vector<Point> result;
-	result.push_back(p1);
-	result.push_back(p2);
-	return result;
-}
-
-int cmp_func(vector<Point>& a, vector<Point>& b) {
-    return a[1].x < b[1].x;
-}
-/*
-Point2f getIntersection(vector<Point>& lineA, vector<Point>& lineB) {
-	double k1 = float(lineA[1].y - lineA[0].y) / float(lineA[1].x - lineA[0].x);
-	double k2 = float(lineB[1].y - lineB[0].y) / float(lineB[1].x - lineB[0].x);
-	cout << k1 << ' ' << k2;
-	Point2f p;
-	p.x = (lineB[0].y - lineA[0].y + k1*lineA[0].x - k2*lineB[0].x) / (k1 - k2);
-	p.y = (k1*lineB[0].y - k2*lineA[0].y + k1*k2*lineA[0].x - k1*k2*lineB[0].x) / (k1 - k2);
-	return p;
-}*/
 
 int main() {
 	string fileName = "test_pic/test1.jpg";
 	Mat origin_image = imread(fileName);
+	namedWindow("Show Image");
+	imshow("Show Image", origin_image);
+	//cvtColor(origin_image, origin_image, CV_BGR2GRAY); 
+	Vec2i v = getPosition(origin_image);
+	cout << v[0] << endl;
+	/*
     Mat image = imread(fileName, 0);
 	Mat grey_img = image.clone();
 	Mat result = image.clone();
@@ -96,7 +63,6 @@ int main() {
 	}
     
 	namedWindow("Show Image");      
-	imshow("Show Image", origin_image);       
-	waitKey(0);       
+	imshow("Show Image", origin_image);  */
 	return 0;
 }
