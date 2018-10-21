@@ -1,14 +1,18 @@
 #include <iostream>
 #include <string>
+#include <cassert>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
+#include "GPIOlib.h"
 
 using namespace cv;
 using namespace std;
+using namespace GPIO;
 
 #define NOISE_MAX_AREA 500
+#define SPEED 50
 //Uncomment this line at run-time to skip GUI rendering
 #define _DEBUG
 
@@ -73,6 +77,30 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 	return 0;
 }
 
+void control(int pos) {
+	const int INTERVAL = 3000;
+	switch(pos) {
+		case -1:
+			delay(INTERVAL);
+			stopLeft();
+			stopRight();
+			break;
+		case 0:
+			turnTo(0);
+			break;
+		case 1:
+			turnTo(10);
+			break;
+		case 2:
+			turnTo(-10);
+			break;
+		default:
+			stopLeft();
+			stopRight();
+			assert(false);
+	}
+}
+
 int main() {
 	VideoCapture capture(CAM_PATH);
 	
@@ -81,6 +109,9 @@ int main() {
 	clog << "Frame Size: " << dWidth << "x" << dHeight << endl;
 
 	Mat image;
+
+	controlLeft(FORWARD, SPEED);
+	controlRight(FORWARD, SPEED);
 	while(true) {
 		capture >> image;
 		if(image.empty())
@@ -91,6 +122,7 @@ int main() {
 		vector<Mat>* results = new vector<Mat>();
 		
 		int n = getPosition(imgROI, results);
+		control(n);
 		
 		#ifdef _DEBUG
 		cout << n << endl;
