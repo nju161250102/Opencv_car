@@ -12,7 +12,7 @@ using namespace std;
 using namespace GPIO;
 
 #define NOISE_MAX_AREA 500
-#define SPEED 1
+#define SPEED 7
 //Uncomment this line at run-time to skip GUI rendering
 #define _DEBUG
 
@@ -51,7 +51,7 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 	threshold(grey_img, binary_img, 170, 255, CV_THRESH_OTSU|CV_THRESH_BINARY);
 	
 	//中值滤波
-	for (int i = 1; i < 16; i += 4) {
+	for (int i = 1; i < 20; i += 4) {
 		medianBlur(binary_img, binary_img, i);
 	}
 	//Canny方法边缘检测
@@ -74,7 +74,7 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 		if (r.width * r.height > NOISE_MAX_AREA) {
 			Vec4f lineData;
 			//将轮廓拟合为直线
-			fitLine(contours[i], lineData, DIST_L2, 0, 1e-2, 1e-2);
+			fitLine(contours[i], lineData, DIST_L2, 0, 1e-1, 1e-1);
 			k_sum += (double) lineData[1] / lineData[0];
 			lines.push_back(lineData);
 			vector<Point> line_point = getEdgePoint(width, height, lineData);
@@ -84,14 +84,22 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 	image_vector->push_back(image);
 	image_vector->push_back(binary_img);
 	
+	double k_avg = k_sum / lines.size();
 	cout << k_sum / lines.size() << endl;
 	if (lines.size() == 0) {
 		return -1; //没有直线——应该到终点了吧
-	} else if (lines.size() > 3) {
+	} else if (lines.size() > 5) {
 		return 0; //直线过多——应该还在路上
 	} else {
+		if (k_avg < 0.020) {
+			return 4;
+		} else if (k_avg < 0.034) {
+			return 2;
+		} else if (k_avg > 0.046) {
+			return 1;
+		} else return 0;
 		//区分一下左和右
-		return k_sum > 0 ? 1 : 2; // 1-方向偏右，向左调整；2-方向偏左，向右调整
+		//return k_sum > 0 ? 1 : 2; // 1-方向偏右，向左调整；2-方向偏左，向右调整
 	}
 	return 0;
 }
@@ -107,7 +115,7 @@ void control(int pos, int lastState) {
 		case 0:
 			switch(lastState){
 				case 1:
-					turnTo(-2);
+					//turnTo(-2);
 					break;
 				case 2:
 					turnTo(2);
@@ -117,10 +125,13 @@ void control(int pos, int lastState) {
 			}
 			break;
 		case 1:
-			turnTo(-17);
+			turnTo(-8);
 			break;
 		case 2:
-			turnTo(17);
+			turnTo(8);
+			break;
+		case 4:
+			turnTo(16);
 			break;
 		default:
 			stopLeft();
@@ -138,7 +149,7 @@ int main() {
 
 	Mat image;
 	init();
-	turnTo(0);
+	turnTo(3);
 	controlLeft(BACKWARD, SPEED);
 	controlRight(FORWARD, SPEED);
 	int lastState = 0;
