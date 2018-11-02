@@ -12,7 +12,7 @@ using namespace std;
 using namespace GPIO;
 
 #define NOISE_MAX_AREA 500
-#define SPEED 5
+#define SPEED 1
 //Uncomment this line at run-time to skip GUI rendering
 #define _DEBUG
 
@@ -51,7 +51,7 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 	threshold(grey_img, binary_img, 170, 255, CV_THRESH_OTSU|CV_THRESH_BINARY);
 	
 	//中值滤波
-	for (int i = 1; i < 20; i += 4) {
+	for (int i = 1; i < 16; i += 4) {
 		medianBlur(binary_img, binary_img, i);
 	}
 	//Canny方法边缘检测
@@ -84,6 +84,7 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 	image_vector->push_back(image);
 	image_vector->push_back(binary_img);
 	
+	cout << k_sum / lines.size() << endl;
 	if (lines.size() == 0) {
 		return -1; //没有直线——应该到终点了吧
 	} else if (lines.size() > 3) {
@@ -95,7 +96,7 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 	return 0;
 }
 
-void control(int pos) {
+void control(int pos, int lastState) {
 	const int INTERVAL = 3000;
 	switch(pos) {
 		case -1:
@@ -104,13 +105,22 @@ void control(int pos) {
 			stopRight();
 			break;
 		case 0:
-			turnTo(0);
+			switch(lastState){
+				case 1:
+					turnTo(-2);
+					break;
+				case 2:
+					turnTo(2);
+					break;
+				default:
+					turnTo(0);
+			}
 			break;
 		case 1:
-			turnTo(-15);
+			turnTo(-17);
 			break;
 		case 2:
-			turnTo(15);
+			turnTo(17);
 			break;
 		default:
 			stopLeft();
@@ -128,20 +138,23 @@ int main() {
 
 	Mat image;
 	init();
-	controlLeft(FORWARD, SPEED);
+	turnTo(0);
+	controlLeft(BACKWARD, SPEED);
 	controlRight(FORWARD, SPEED);
+	int lastState = 0;
 	while(true) {
 		capture >> image;
 		if(image.empty())
 			break;
 		
-		Rect roi(0, image.rows/2, image.cols, image.rows*3/8);
+		Rect roi(0, image.rows/2, image.cols, image.rows/2);
 		Mat imgROI = image(roi);
 		vector<Mat>* results = new vector<Mat>();
 		
 		int n = getPosition(imgROI, results);
-		cout << n << endl;
-		control(n);
+		//cout << n << endl;
+		control(n, lastState);
+		lastState = n;
 		
 		#ifdef _DEBUG
 		for(int i = 0; i < results->size(); i++) {

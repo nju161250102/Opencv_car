@@ -6,10 +6,10 @@ prom = main
 clean:
 	rm -rf $(prom)
 
-$(prom): $(source), $(header), $(lib)
+$(prom): $(source) $(header) $(lib)
 	g++ $(source) -o $(prom) `pkg-config --cflags --libs opencv` -L. -lwiringPi -lGPIO -lpthread
 
 run: $(prom)
 	sudo chmod 777 $(prom)
-	./$(prom)
+	sudo ./$(prom)
 
