@@ -13,6 +13,7 @@ using namespace GPIO;
 
 #define NOISE_MAX_AREA 500
 #define SPEED 7
+#define ANGLE 0
 //Uncomment this line at run-time to skip GUI rendering
 #define _DEBUG
 
@@ -36,8 +37,10 @@ vector<Point> getEdgePoint(int w, int h, Vec4f& line) {
 * 获取小车当前位置
 * -1：应该到终点了吧
 * 0：应该还在路上
-* 1：方向偏右，向左调整
-* 2：方向偏左，向右调整
+* 1：方向有点偏右，向左调整一点
+* 3：方向偏右，向左调整（未使用）
+* 2：方向有点偏左，向右调整一点
+* 4：方向偏左，向右调整
 */
 int getPosition(Mat& image, vector<Mat>* image_vector) {
 	Mat grey_img = image.clone();
@@ -85,7 +88,9 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 	image_vector->push_back(binary_img);
 	
 	double k_avg = k_sum / lines.size();
-	cout << k_sum / lines.size() << endl;
+	#ifdef _DEBUG
+	cout << k_avg << endl;
+	#endif
 	if (lines.size() == 0) {
 		return -1; //没有直线——应该到终点了吧
 	} else if (lines.size() > 5) {
@@ -98,8 +103,6 @@ int getPosition(Mat& image, vector<Mat>* image_vector) {
 		} else if (k_avg > 0.046) {
 			return 1;
 		} else return 0;
-		//区分一下左和右
-		//return k_sum > 0 ? 1 : 2; // 1-方向偏右，向左调整；2-方向偏左，向右调整
 	}
 	return 0;
 }
@@ -140,6 +143,47 @@ void control(int pos, int lastState) {
 	}
 }
 
+void control_v2(int n, int lastState) {
+	const int INTERVAL = 3000;
+	switch(n) {
+		case -1:
+			delay(INTERVAL);
+			stopLeft();
+			stopRight();
+			break;
+		case 0:
+			controlLeft(FORWARD, SPEED);
+			controlRight(FORWARD, SPEED);
+			if (lastState == 2) {
+				turnTo(ANGLE + 2);
+			} else if (lastState == 4) {
+				turnTo(ANGLE + 4);
+			} else {
+				turnTo(ANGLE)
+			}
+			break;
+		case 1:
+			controlRight(FORWARD, SPEED - 1);
+			controlLeft(FORWARD, SPEED - 1);
+			turnTo(ANGLE - 8);
+			break;
+		case 2:
+			controlLeft(FORWARD, SPEED - 1);
+			controlRight(FORWARD, SPEED - 1);
+			turnTo(ANGLE + 8);
+			break;
+		case 4:
+			controlLeft(FORWARD, SPEED - 2);
+			controlRight(FORWARD, SPEED - 2);
+			turnTo(ANGLE + 16);
+			break;
+		default:
+			stopLeft();
+			stopRight();
+			assert(false);
+	}
+}
+
 int main() {
 	VideoCapture capture(CAM_PATH);
 	
@@ -149,8 +193,8 @@ int main() {
 
 	Mat image;
 	init();
-	turnTo(3);
-	controlLeft(BACKWARD, SPEED);
+	turnTo(ANGLE);
+	controlLeft(FORWARD, SPEED);
 	controlRight(FORWARD, SPEED);
 	int lastState = 0;
 	while(true) {
@@ -162,10 +206,13 @@ int main() {
 		Mat imgROI = image(roi);
 		vector<Mat>* results = new vector<Mat>();
 		
+		//int n = 0 测试语句，用于校正前轮
 		int n = getPosition(imgROI, results);
-		//cout << n << endl;
-		control(n, lastState);
-		lastState = n;
+		
+		if (n != lastState) {
+			control(n, lastState);
+			lastState = n;
+		}
 		
 		#ifdef _DEBUG
 		for(int i = 0; i < results->size(); i++) {
